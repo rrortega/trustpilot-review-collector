@@ -1,5 +1,21 @@
 <?php
-
+/**
+ * TrustpilotReviewCollector is a PHP class designed to fetch and parse reviews
+ * from Trustpilot.com for a specified business unit ID. It supports pagination
+ * and allows customization of the number of reviews to fetch, sorting, and ordering.
+ * The class uses Guzzle HTTP Client if available, and falls back to cURL if Guzzle
+ * is not defined.
+ *
+ * Example usage:
+ * $collector = new TrustpilotReviewCollector($businessUnitId, $count, $orderBy, $order);
+ * $reviews = $collector->getReviews();
+ *
+ * The fetched reviews include details such as review ID, user, avatar, verified status,
+ * title, URL, content, rating, and time.
+ *
+ * Public repository: https://github.com/rrortega/trustpilot-review-collector
+ * Author: Rolando Rodriguez Ortega (rolymayo11@gmail.com)
+ */
 namespace RRO\Review\Collector;
 
 class TrustpilotReviewCollector
@@ -33,29 +49,50 @@ class TrustpilotReviewCollector
      *
      * @param int    $page   Page number 
      */
+    /**
+     * Retrieve the html content of the page.
+     *
+     * @param int    $page   Page number 
+     */
     public function getPageHtml($page = 1)
     {
+        if (class_exists('\GuzzleHttp\Client')) {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->request('GET', "https://trustpilot.com/review/{$this->businessUnitId}?languages=all" . (1 != $page ? "&page={$page}" : "") . "&sort=recency", [
+                'headers' => [
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+                ],
+                'allow_redirects' => [
+                    'max' => 10,
+                ],
+                'timeout' => 120,
+                'connect_timeout' => 120,
+            ]);
 
-        $options = array(
-            CURLOPT_CUSTOMREQUEST  => "GET",
-            CURLOPT_POST           => false,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER         => false,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_ENCODING       => "",
-            CURLOPT_AUTOREFERER    => true,
-            CURLOPT_CONNECTTIMEOUT => 120,
-            CURLOPT_TIMEOUT        => 120,
-            CURLOPT_MAXREDIRS      => 10,
-        );
+            return $response->getBody()->getContents();
+        } else {
+            $options = array(
+                CURLOPT_CUSTOMREQUEST  => "GET",
+                CURLOPT_POST           => false,
+                CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HEADER         => false,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_ENCODING       => "",
+                CURLOPT_AUTOREFERER    => true,
+                CURLOPT_CONNECTTIMEOUT => 120,
+                CURLOPT_TIMEOUT        => 120,
+                CURLOPT_MAXREDIRS      => 10,
+            );
 
-        $curl = curl_init("https://trustpilot.com/review/{$this->businessUnitId}?languages=all" . (1 != $page ? "&page={$page}" : "") . "&sort=recency");
-        curl_setopt_array($curl, $options);
-        $data = curl_exec($curl);
+            $curl = curl_init("https://trustpilot.com/review/{$this->businessUnitId}?languages=all" . (1 != $page ? "&page={$page}" : "") . "&sort=recency");
+            curl_setopt_array($curl, $options);
+            $data = curl_exec($curl);
 
-        return $data;
+            return $data;
+        }
     }
+
 
     /**
      * Check if reviews are paginated in multiple pages.
@@ -153,8 +190,8 @@ class TrustpilotReviewCollector
      */
     private function parse_url($dom, $context)
     {
-        $xpath = new \DOMXpath($dom); 
-        return sprintf("https://trustpilot.com/%s" , $xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->getAttribute('href') ?: '');
+        $xpath = new \DOMXpath($dom);
+        return sprintf("https://trustpilot.com/%s", $xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->getAttribute('href') ?: '');
     }
     /**
      * Find and return review id.
@@ -165,8 +202,8 @@ class TrustpilotReviewCollector
      */
     private function parse_id($dom, $context)
     {
-        $xpath = new \DOMXpath($dom); 
-        return str_replace("/reviews/","",$xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->getAttribute('href') ?: '');
+        $xpath = new \DOMXpath($dom);
+        return str_replace("/reviews/", "", $xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->getAttribute('href') ?: '');
     }
 
     /**

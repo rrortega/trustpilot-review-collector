@@ -1,5 +1,13 @@
 # trustpilot-reviews-collector
+  
 Retrive reviews from Trustpilot.com
+TrustpilotReviewCollector is a PHP class designed to fetch and parse reviews
+from Trustpilot.com for a specified business unit ID. It supports pagination
+and allows customization of the number of reviews to fetch, sorting, and ordering.
+The class uses Guzzle HTTP Client if available, and falls back to cURL if Guzzle
+is not defined. 
+
+The fetched reviews include details such as review ID, user, avatar, verified status, title, URL, content, rating, and time.
 
 ## Installation
 You can install TrustpilotReviewCollector library via Composer:
@@ -21,7 +29,7 @@ $order = 'desc'
 $collector = new TrustpilotReviewCollector($businessUnitId,$count, $orderby , $order );
 $reviews = $collector->getReviews();
 foreach($reviews as $r){
-    
+
      //echo  $r["id"];
      //echo  $r["user"];
      //echo  $r["avatar"];
