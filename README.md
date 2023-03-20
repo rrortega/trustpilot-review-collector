@@ -3,9 +3,7 @@ Retrive reviews from Trustpilot.com
 
 ## Installation
 You can install TrustpilotReviewsCollector library via Composer:
-
 ```yml
-
 composer require rrortega/trustpilot-reviews-collector
 ```
 
@@ -14,7 +12,7 @@ composer require rrortega/trustpilot-reviews-collector
 Here's an example of how to use TrustpilotReviewsCollector:
 
 ```php
-use rrortega\TrustpilotReviewsCollector;
+use rrortega\TrustpilotReviewsCollector; 
 
 $id="www.google.com";
 $count=1;
@@ -23,6 +21,7 @@ $order = 'desc'
 $collector = new TrustpilotReviewsCollector($id,$count, $orderby , $order );
 $reviews = $collector->getReviews();
 ```
+
 ## Testing
 
 You can run the unit tests for TrustpilotReviewsCollector Library using PHPUnit:
@@ -30,6 +29,7 @@ You can run the unit tests for TrustpilotReviewsCollector Library using PHPUnit:
 ```cli
 ./vendor/bin/phpunit
 ```
+
 
 ## License
 
