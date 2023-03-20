@@ -21,6 +21,7 @@ $order = 'desc'
 $collector = new TrustpilotReviewCollector($businessUnitId,$count, $orderby , $order );
 $reviews = $collector->getReviews();
 foreach($reviews as $r){
+    
      //echo  $r["id"];
      //echo  $r["user"];
      //echo  $r["avatar"];
