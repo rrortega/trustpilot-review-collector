@@ -1,6 +1,6 @@
 {
     "name": "rrortega/trustpilot-review-collector",
-    "description": "PHP library to collect Trustpilot reviews",
+    "description": "TrustpilotReviewCollector is a PHP class designed to fetch and parse reviews from Trustpilot.com for a specified business unit ID. It supports pagination and allows customization of the number of reviews to fetch, sorting, and ordering. The class uses Guzzle HTTP Client if available, and falls back to cURL if Guzzle is not defined.",
     "type": "library", 
     "license": "MIT",
     "authors": [
