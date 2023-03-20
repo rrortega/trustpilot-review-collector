@@ -12,6 +12,9 @@
     "require": {
         "php": "^7.1.3", 
         "guzzlehttp/guzzle": "^6"
+    }, 
+    "require-dev": {
+        "phpunit/phpunit": "^7.1"
     },
     "autoload": {
         "psr-4": {
@@ -24,8 +27,5 @@
             "RRO\\Review\\Collector\\": "src/"
         }
     },
-    "minimum-stability": "stable",
-    "require-dev": {
-        "phpunit/phpunit": "^7.1"
-    }
+    "minimum-stability": "stable"
 }
