@@ -34,6 +34,7 @@ foreach($reviews as $r){
      //echo  $r["user"];
      //echo  $r["avatar"];
      //echo  $r["verified"]; //true if user is verified in truspilot
+     //echo  $r["iso"];//user country iso2
      //echo  $r["title"];
      //echo  $r["url"];
      //echo  $r["body"];

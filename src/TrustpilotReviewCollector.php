@@ -10,7 +10,7 @@
  * $collector = new TrustpilotReviewCollector($businessUnitId, $count, $orderBy, $order);
  * $reviews = $collector->getReviews();
  *
- * The fetched reviews include details such as review ID, user, avatar, verified status,
+ * The fetched reviews include details such as review ID, user, avatar, verified status,iso, 
  * title, URL, content, rating, and time.
  *
  * Public repository: https://github.com/rrortega/trustpilot-review-collector
@@ -70,7 +70,7 @@ class TrustpilotReviewCollector
             ]);
 
             return $response->getBody()->getContents();
-        } else {
+        } else { 
             $options = array(
                 CURLOPT_CUSTOMREQUEST  => "GET",
                 CURLOPT_POST           => false,
@@ -100,7 +100,7 @@ class TrustpilotReviewCollector
      * @param \DOMDocument $dom
      * @param string 
      */
-    private function parse_pagination($dom)
+    private function parsePagination($dom)
     {
         $xpath = new \DOMXpath($dom);
 
@@ -116,7 +116,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_consumer($dom, $context)
+    private function getUserFullName($dom, $context)
     {
         $xpath = new \DOMXpath($dom);
 
@@ -129,7 +129,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_user_verified($dom, $context): bool
+    private function isUserVerified($dom, $context): bool
     {
         $xpath = new \DOMXpath($dom);
         return  null != $xpath->query(".//*[contains(@class, 'ic-verified-user-check')]", $context)->item(0);
@@ -141,7 +141,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_avatar_url($dom, $context)
+    private function getAvatar($dom, $context)
     {
         $xpath = new \DOMXpath($dom);
         if (null != $xpath->query(".//*[@data-consumer-avatar-image]", $context)->item(0)) {
@@ -154,16 +154,17 @@ class TrustpilotReviewCollector
         return '';
     }
     /**
-     * Find and return the author of the review.
+     * Find and return the author country ISO
      *
      * @param \DOMDocument $dom
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_iso($dom, $context)
+    private function getCountryIso($dom, $context)
     {
-        //return $xpath->query(".//*[@data-consumer-name-typography]", $context)->item(0)->nodeValue ?: '';
-        //a[name="consumer-profile"] div[data-consumer-country-typography="true"] span
+        $xpath = new \DOMXpath($dom);  
+        return $xpath->query(".//*[@data-consumer-country-typography]/span", $context)->item(0)->nodeValue ?: '';
+       
     }
 
     /**
@@ -173,7 +174,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_title($dom, $context)
+    private function getTitle($dom, $context)
     {
         $xpath = new \DOMXpath($dom);
 
@@ -188,7 +189,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_url($dom, $context)
+    private function getUrl($dom, $context)
     {
         $xpath = new \DOMXpath($dom);
         return sprintf("https://trustpilot.com/%s", $xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->getAttribute('href') ?: '');
@@ -200,7 +201,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_id($dom, $context)
+    private function getId($dom, $context)
     {
         $xpath = new \DOMXpath($dom);
         return str_replace("/reviews/", "", $xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->getAttribute('href') ?: '');
@@ -213,7 +214,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_content($dom, $context)
+    private function getContent($dom, $context)
     {
         $xpath = new \DOMXpath($dom);
 
@@ -229,7 +230,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_rating($dom, $context)
+    private function getRating($dom, $context)
     {
         $xpath = new \DOMXpath($dom);
 
@@ -243,7 +244,7 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_time($dom, $context)
+    private function getTime($dom, $context)
     {
         $xpath = new \DOMXpath($dom);
 
@@ -257,19 +258,20 @@ class TrustpilotReviewCollector
      * @param \DOMNode $context
      * @param string 
      */
-    private function parse_data($dom, $context)
+    private function parseData($dom, $context)
     {
 
         $parsed = array(
-            'id' => $this->parse_id($dom, $context),
-            'user' => $this->parse_consumer($dom, $context),
-            'avatar' => $this->parse_avatar_url($dom, $context),
-            'verified' => $this->parse_user_verified($dom, $context),
-            'title' => $this->parse_title($dom, $context),
-            'url' => $this->parse_url($dom, $context),
-            'body' => $this->parse_content($dom, $context),
-            'rating' => $this->parse_rating($dom, $context),
-            'time' => $this->parse_time($dom, $context),
+            'id' => $this->getId($dom, $context),
+            'user' => $this->getUserFullName($dom, $context),
+            "iso"=>$this->getCountryIso($dom, $context), 
+            'avatar' => $this->getAvatar($dom, $context),
+            'verified' => $this->isUserVerified($dom, $context),
+            'title' => $this->getTitle($dom, $context),
+            'url' => $this->getUrl($dom, $context),
+            'body' => $this->getContent($dom, $context),
+            'rating' => $this->getRating($dom, $context),
+            'time' => $this->getTime($dom, $context),
         );
 
         return $parsed;
@@ -315,7 +317,7 @@ class TrustpilotReviewCollector
 
         $items = $dom->getElementsByTagName('article');
 
-        $pagination = $this->parse_pagination($dom);
+        $pagination = $this->parsePagination($dom);
 
         foreach ($items as $item) {
 
@@ -323,7 +325,7 @@ class TrustpilotReviewCollector
                 break;
             endif;
 
-            $parsed[] = $this->parse_data($dom, $item);
+            $parsed[] = $this->parseData($dom, $item);
         }
 
         if ($pagination > 1) {
@@ -340,7 +342,7 @@ class TrustpilotReviewCollector
                         break;
                     endif;
 
-                    $parsed[] = $this->parse_data($dom, $item);
+                    $parsed[] = $this->parseData($dom, $item);
                 }
             }
         }
