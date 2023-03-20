@@ -1,14 +1,20 @@
-<?php
+<?php  
+ 
+namespace Tests; 
 use PHPUnit\Framework\TestCase;
-class TrustpilotReviewsCollectorTest extends TestCase
+use RRO\Review\Collector\TrustpilotReviewCollector;
+
+class TrustpilotReviewCollectorTest extends TestCase
 {
-    public function testGetData()
+    public function testAll()
     {
-        $id = "www.google.com";
+        $businessUnitId = "www.lovecuba.com";
         $count = 1;
-        $collector = new TrustpilotReviewsCollector($id, $count);
+        $collector = new TrustpilotReviewCollector($businessUnitId, $count);
         $list = $collector->getReviews();
-        return $this->assert()
-        // Add your assertions here to test the returned data
+
+        $this->assertNotEmpty($list); 
     }
+
+
 }

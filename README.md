@@ -2,29 +2,29 @@
 Retrive reviews from Trustpilot.com
 
 ## Installation
-You can install TrustpilotReviewsCollector library via Composer:
+You can install TrustpilotReviewCollector library via Composer:
 ```yml
-composer require rrortega/trustpilot-reviews-collector
+composer require rrortega/trustpilot-review-collector
 ```
 
 ## Usage
 
-Here's an example of how to use TrustpilotReviewsCollector:
+Here's an example of how to use TrustpilotReviewCollector:
 
 ```php
-use rrortega\TrustpilotReviewsCollector; 
+use RRO\Review\Collector\TrustpilotReviewCollector;
 
-$id="www.google.com";
+$businessUnitId="www.google.com";
 $count=1;
 $orderby = 'time';
 $order = 'desc'
-$collector = new TrustpilotReviewsCollector($id,$count, $orderby , $order );
+$collector = new TrustpilotReviewCollector($businessUnitId,$count, $orderby , $order );
 $reviews = $collector->getReviews();
 ```
 
 ## Testing
 
-You can run the unit tests for TrustpilotReviewsCollector Library using PHPUnit:
+You can run the unit tests for TrustpilotReviewCollector Library using PHPUnit:
 
 ```cli
 ./vendor/bin/phpunit
@@ -33,5 +33,5 @@ You can run the unit tests for TrustpilotReviewsCollector Library using PHPUnit:
 
 ## License
 
-TrustpilotReviewsCollector Library is licensed under the MIT license. See the LICENSE file for more information. 
+TrustpilotReviewCollector Library is licensed under the MIT license. See the LICENSE file for more information. 
 
