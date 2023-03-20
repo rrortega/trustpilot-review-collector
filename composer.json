@@ -1,6 +1,6 @@
 {
     "name": "rrortega/trustpilot-review-collector",
-    "description": "Librería para recopilar reseñas de Trustpilot",
+    "description": "PHP library to collect Trustpilot reviews",
     "type": "library", 
     "license": "MIT",
     "authors": [
