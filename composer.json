@@ -1,8 +1,10 @@
 {
     "name": "rrortega/trustpilot-review-collector",
     "description": "Librería para recopilar reseñas de Trustpilot",
-    "type": "library",
-    "license": "MIT", 
+    "type": "library", 
+    "license": [
+        "MIT"
+    ],
     "authors": [
         {
             "name": "Rolando Rodriguez Ortega",
