@@ -1,0 +1,20 @@
+{
+    "name": "rrortega/trustpilot-reviews-collector",
+    "description": "Librería para recopilar reseñas de Trustpilot",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Rolando Rodriguez Ortega",
+            "email": "rolymayo11@gmail.com"
+        }
+    ],
+    "require": {
+        "guzzlehttp/guzzle": "^7.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "TrustpilotReviewsCollector\\": "src/"
+        }
+    },
+    "minimum-stability": "stable"
+}
