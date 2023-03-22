@@ -1,22 +1,31 @@
 <?php
 /**
- * TrustpilotReviewCollector is a PHP class designed to fetch and parse reviews
+ * TrustpilotReviewCollector is a PHP class designed to fetch and parse reviews and business profile
  * from Trustpilot.com for a specified business unit ID. It supports pagination
  * and allows customization of the number of reviews to fetch, sorting, and ordering.
- * The class uses Guzzle HTTP Client if available, and falls back to cURL if Guzzle
- * is not defined.
+ * The class uses Symfony\DomCrawler and Symfony\HttpClient
  *
  * Example usage:
- * $collector = new TrustpilotReviewCollector($businessUnitId, $count, $orderBy, $order);
- * $reviews = $collector->getReviews();
+ * $trustpilot = new TrustpilotReviewCollector($businessUnitId, $count, $orderBy, $order);
+ * $reviews = $trustpilot->getReviews();
  *
- * The fetched reviews include details such as review ID, user, avatar, verified status,iso, 
- * title, URL, content, rating, and time.
+ * The fetched reviews include details such as review ID, user, avatar, verified status,iso,
+ * title, URL, content, rating, time,answer and answer_time.
+ *
+ * $profile = $trustpilot->profileData();
+ *
+ * The profile include details such as business, category, website, logo, rating, qualification, and total_reviews.
  *
  * Public repository: https://github.com/rrortega/trustpilot-review-collector
  * Author: Rolando Rodriguez Ortega (rolymayo11@gmail.com)
  */
+
 namespace RRO\Review\Collector;
+
+
+use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\DomCrawler\Crawler;
+
 
 class TrustpilotReviewCollector
 {
@@ -47,231 +56,294 @@ class TrustpilotReviewCollector
     /**
      * Retrieve the html content of the page.
      *
-     * @param int    $page   Page number 
+     * @param int $page Page number
      */
     /**
      * Retrieve the html content of the page.
      *
-     * @param int    $page   Page number 
+     * @param int $page Page number
      */
     public function getPageHtml($page = 1)
     {
-        if (class_exists('\GuzzleHttp\Client')) {
-            $client = new \GuzzleHttp\Client();
-            $response = $client->request('GET', "https://trustpilot.com/review/{$this->businessUnitId}?languages=all" . (1 != $page ? "&page={$page}" : "") . "&sort=recency", [
-                'headers' => [
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
-                ],
-                'allow_redirects' => [
-                    'max' => 10,
-                ],
-                'timeout' => 120,
-                'connect_timeout' => 120,
-            ]);
+        $c = HttpClient::create(['timeout' => 120, "verify_peer" => false, "verify_host" => false]);
+        $response = $c->request('GET', "https://trustpilot.com/review/{$this->businessUnitId}?languages=all" . (1 != $page ? "&page={$page}" : "") . "&sort=recency", [
+            'headers' => [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+            ],
+            "max_redirects" => 10
+        ]);
 
-            return $response->getBody()->getContents();
-        } else { 
-            $options = array(
-                CURLOPT_CUSTOMREQUEST  => "GET",
-                CURLOPT_POST           => false,
-                CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HEADER         => false,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_ENCODING       => "",
-                CURLOPT_AUTOREFERER    => true,
-                CURLOPT_CONNECTTIMEOUT => 120,
-                CURLOPT_TIMEOUT        => 120,
-                CURLOPT_MAXREDIRS      => 10,
-            );
+        return $response->getContent(false);
 
-            $curl = curl_init("https://trustpilot.com/review/{$this->businessUnitId}?languages=all" . (1 != $page ? "&page={$page}" : "") . "&sort=recency");
-            curl_setopt_array($curl, $options);
-            $data = curl_exec($curl);
-
-            return $data;
-        }
     }
 
+    /**
+     * Retrieves and returns profile data of a business from Trustpilot using its businessUnitId.
+     * @return array
+     * @throws \Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface
+     * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+     */
+    public function profileData(): array
+    {
+        $c = HttpClient::create(['timeout' => 120, "verify_peer" => false, "verify_host" => false]);
+        $response = $c->request('GET', "https://trustpilot.com/review/{$this->businessUnitId}", [
+            'headers' => [
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+            ],
+            "max_redirects" => 10
+        ]);
+        $html = $response->getContent(false);
+        $crawler = new Crawler($html);
+        $overview = $crawler->filterXPath('.//*[@data-overview-section]')->first();
+
+        $logo = $this->extractAttributeValue($overview, ".//a[@data-business-unit-header-profile-image-link]/picture/img", 'src');
+        $rating = $this->extractText($overview, ".//p[@data-rating-typography]");
+        $business = $this->extractText($overview, ".//*[@id='business-unit-title']/h1/span");
+        $compound = $this->extractText($overview, ".//*[@id='business-unit-title']/h1/following-sibling::span[1]/span");
+        $category = $this->extractText($overview, ".//*[@id='business-unit-title']/h1/following-sibling::span[1]/following-sibling::p[1]/a");
+        $website = $this->extractAttributeValue($overview, ".//*[@data-business-unit-header-profile-link]/div/a", "href");
+
+        if (!empty($website)) {
+            $website = explode("?", $website);
+            $website = $website[0];
+        }
+
+        return [
+            "business" => $business,
+            "category" => $category,
+            "website" => $website,
+            "logo" => $logo,
+            "rating" => $rating,
+            "qualification" => strtoupper(trim(preg_replace("/[^a-z]+/i", "", $compound))),
+            "total_reviews" => preg_replace("/[^0-9]+/", "", $compound)
+        ];
+    }
+
+
+    /**
+     * Collect all reviews from truspilot
+     */
+    public function getReviews(): array
+    {
+        $html = $this->getPageHtml();
+        $crawler = new Crawler($html);
+        $parsed = [];
+        $items = $crawler->filterXPath(".//article");
+        $pagination = $this->parsePagination($crawler);
+        $items->each(function (Crawler $item) use (&$parsed) {
+            if (count($parsed) < $this->count || $this->count == -1) {
+                $parsed[] = $this->parseReviewData($item);
+            }
+
+        });
+        if ($pagination > 1 && (count($parsed) < $this->count || $this->count == -1)) {
+            for ($page = 2; $page <= $pagination && (count($parsed) < $this->count || $this->count == -1); $page++) {
+                $html = $this->getPageHtml($page);
+                $crawler = new Crawler($html);
+                $items = $crawler->filterXPath(".//article");
+                $items->each(function (Crawler $item) use (&$parsed) {
+                    if (count($parsed) < $this->count || $this->count == -1) {
+                        $parsed[] = $this->parseReviewData($item);
+                    }
+                });
+            }
+        }
+        $this->sort($parsed);
+        return $parsed;
+    }
+
+    /**
+     * Helper method to extract the text content of an element from a given XPath.
+     *
+     * @param Crawler $crawler The Crawler object to extract data from
+     * @param string $xpath The XPath expression to find the element
+     * @return string The extracted text content, or an empty string if the element is not found
+     */
+    private function extractText(Crawler $crawler, string $xpath): string
+    {
+        $node = $crawler->filterXPath($xpath);
+        return $node->count() > 0 ? $node->text() : '';
+    }
+
+    /**
+     * Helper method to extract the value of a specified attribute from the first element matching a given XPath.
+     *
+     * @param Crawler $crawler The Crawler object to extract data from
+     * @param string $xpath The XPath expression to find the element
+     * @param string $attribute The attribute to extract the value from
+     * @return string The extracted attribute
+     */
+    private function extractAttributeValue(Crawler $crawler, string $xpath, string $attribute): string
+    {
+        $values = $crawler->filterXPath($xpath)->extract([$attribute]);
+        return !empty($values) ? array_pop($values) : '';
+    }
 
     /**
      * Check if reviews are paginated in multiple pages.
      *
-     * @param \DOMDocument $dom
-     * @param string 
+     * @param Crawler $craw
+     * @param string
      */
-    private function parsePagination($dom)
+    private function parsePagination($craw)
     {
-        $xpath = new \DOMXpath($dom);
-
-        $pagination = $xpath->query(".//*[contains(@name, 'pagination-button-')][not(contains(@name, 'pagination-button-next'))]");
-
-        return $pagination->length ? $pagination->item($pagination->length - 1)->nodeValue : 1;
+        $pagination = $this->extractText($craw, ".//*[contains(@name, 'pagination-button-')][not(contains(@name, 'pagination-button-next'))]");
+        return !empty($pagination) ? $pagination : 1;
     }
 
     /**
      * Find and return the author of the review.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return string
      */
-    private function getUserFullName($dom, $context)
+    private function getUserFullName(Crawler $item)
     {
-        $xpath = new \DOMXpath($dom);
-
-        return $xpath->query(".//*[@data-consumer-name-typography]", $context)->item(0)->nodeValue ?: '';
+        return $this->extractText($item, ".//*[@data-consumer-name-typography]");
     }
+
     /**
      * Return true if the author of the review is verified account in trusttpilot.com.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return bool
      */
-    private function isUserVerified($dom, $context): bool
+    private function isUserVerified(Crawler $item): bool
     {
-        $xpath = new \DOMXpath($dom);
-        return  null != $xpath->query(".//*[contains(@class, 'ic-verified-user-check')]", $context)->item(0);
+        return $item->filterXPath(".//*[contains(@class, 'ic-verified-user-check')]")->count() > 0;
     }
+
     /**
-     * Find and return the author avatar of the review.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     *  Find and return the author avatar of the review.
+     * @param Crawler $item
+     * @return string
      */
-    private function getAvatar($dom, $context)
+    private function getAvatar(Crawler $item)
     {
-        $xpath = new \DOMXpath($dom);
-        if (null != $xpath->query(".//*[@data-consumer-avatar-image]", $context)->item(0)) {
-            $user_link = $xpath->query(".//*[@data-consumer-profile-link]", $context)->item(0);
-            $user_link = !empty($user_link) ?  $user_link->getAttribute('href') ?? '' : '';
+        if ($item->filterXPath(".//*[@data-consumer-avatar-image]")->count()) {
+            $user_link = $this->extractAttributeValue($item, ".//*[@data-consumer-profile-link]", 'href');
             return !empty($user_link)
                 ? sprintf("https://user-images.trustpilot.com/%s/73x73.png", str_replace("/users/", "", $user_link))
                 : '';
         }
         return '';
     }
+
     /**
      * Find and return the author country ISO
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return string
      */
-    private function getCountryIso($dom, $context)
+    private function getCountryIso(Crawler $item)
     {
-        $xpath = new \DOMXpath($dom);  
-        return $xpath->query(".//*[@data-consumer-country-typography]/span", $context)->item(0)->nodeValue ?: '';
-       
+        return $this->extractText($item, ".//*[@data-consumer-country-typography]/span");
+
     }
 
     /**
      * Find and return the title of the review.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return string
      */
-    private function getTitle($dom, $context)
+    private function getTitle(Crawler $item)
     {
-        $xpath = new \DOMXpath($dom);
-
-        return $xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->nodeValue ?: '';
+        return $this->extractText($item, ".//*[@data-review-title-typography]");
     }
 
 
     /**
      * Find and return review url.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return string
      */
-    private function getUrl($dom, $context)
+    private function getUrl(Crawler $item)
     {
-        $xpath = new \DOMXpath($dom);
-        return sprintf("https://trustpilot.com/%s", $xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->getAttribute('href') ?: '');
+        $href = $this->extractAttributeValue($item, ".//*[@data-review-title-typography]", 'href');
+        return "https://trustpilot.com$href";
     }
+
     /**
      * Find and return review id.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return array|string|string[]
      */
-    private function getId($dom, $context)
+    private function getId(Crawler $item): string
     {
-        $xpath = new \DOMXpath($dom);
-        return str_replace("/reviews/", "", $xpath->query(".//*[@data-review-title-typography]", $context)->item(0)->getAttribute('href') ?: '');
+        $href = $this->extractAttributeValue($item, ".//*[@data-review-title-typography]", 'href');
+        return str_replace("/reviews/", "", $href);
     }
 
     /**
      * Find and return review content.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return string
      */
-    private function getContent($dom, $context)
+    private function getBody(Crawler $item): string
     {
-        $xpath = new \DOMXpath($dom);
+        return $this->extractText($item, ".//*[@data-service-review-text-typography]");
+    }
 
-        $content = $xpath->query(".//*[@data-service-review-text-typography]", $context);
+    /**
+     * Find and return review answer messaje.
+     * @param Crawler $item
+     * @return string
+     */
+    private function getAnswer(Crawler $item): string
+    {
+        return $this->extractText($item, ".//*[@data-service-review-business-reply-text-typography]");
+    }
 
-        return $content->length ? $content->item(0)->nodeValue : '';
+    /**
+     * Find and return review answer time.
+     * @param Crawler $item
+     * @return string
+     */
+    private function getAnswerTime(Crawler $item): string
+    {
+        return $this->extractAttributeValue($item, ".//*[@data-service-review-business-reply-date-time-ago]", 'datetime');
     }
 
     /**
      * Find and return the review rating.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return mixed|string
      */
-    private function getRating($dom, $context)
+    private function getRating(Crawler $item): string
     {
-        $xpath = new \DOMXpath($dom);
-
-        return $xpath->query(".//div[@data-service-review-rating]", $context)->item(0)->getAttribute('data-service-review-rating') ?: '';
+        $rating = $this->extractAttributeValue($item, ".//div[@data-service-review-rating]", 'data-service-review-rating');
+        return !empty($rating) ? $rating : '0';
     }
 
     /**
      * Find and return review date time.
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return mixed|string
      */
-    private function getTime($dom, $context)
+    private function getTime(Crawler $item): string
     {
-        $xpath = new \DOMXpath($dom);
-
-        return $xpath->query(".//*[@data-service-review-date-time-ago]", $context)->item(0)->getAttribute('datetime') ?: '';
+        return $this->extractAttributeValue($item, ".//*[@data-service-review-date-time-ago]", 'datetime');
     }
 
     /**
      * Find the data of the review
-     *
-     * @param \DOMDocument $dom
-     * @param \DOMNode $context
-     * @param string 
+     * @param Crawler $item
+     * @return array
      */
-    private function parseData($dom, $context)
+    private function parseReviewData(Crawler $item): array
     {
-
         $parsed = array(
-            'id' => $this->getId($dom, $context),
-            'user' => $this->getUserFullName($dom, $context),
-            "iso"=>$this->getCountryIso($dom, $context), 
-            'avatar' => $this->getAvatar($dom, $context),
-            'verified' => $this->isUserVerified($dom, $context),
-            'title' => $this->getTitle($dom, $context),
-            'url' => $this->getUrl($dom, $context),
-            'body' => $this->getContent($dom, $context),
-            'rating' => $this->getRating($dom, $context),
-            'time' => $this->getTime($dom, $context),
+            'id' => $this->getId($item),
+            'user' => $this->getUserFullName($item),
+            "iso" => $this->getCountryIso($item),
+            'avatar' => $this->getAvatar($item),
+            'verified' => $this->isUserVerified($item),
+            'title' => $this->getTitle($item),
+            'url' => $this->getUrl($item),
+            'body' => $this->getBody($item),
+            'rating' => $this->getRating($item),
+            'time' => $this->getTime($item),
+            'answer' => $this->getAnswer($item),
+            'answer_time' => $this->getAnswerTime($item),
         );
 
         return $parsed;
@@ -282,11 +354,10 @@ class TrustpilotReviewCollector
      *
      * @param array $data Array of reviews
      */
-    private function sort(&$data)
+    private function sort(&$data): array
     {
 
         if ('time' === $this->orderBy) {
-
             if ('desc' === $this->order) {
                 return $data;
             };
@@ -300,55 +371,5 @@ class TrustpilotReviewCollector
         };
 
         return $sorted;
-    }
-
-    /**
-     * Collect all reviews from truspilot
-     */
-    public function getReviews()
-    {
-        $data = $this->getPageHtml();
-
-        $dom = new \DOMDocument('1.0');
-
-        $dom->loadHTML($data, LIBXML_NOERROR);
-
-        $parsed = [];
-
-        $items = $dom->getElementsByTagName('article');
-
-        $pagination = $this->parsePagination($dom);
-
-        foreach ($items as $item) {
-
-            if (count($parsed) >= $this->count && $this->count != -1) :
-                break;
-            endif;
-
-            $parsed[] = $this->parseData($dom, $item);
-        }
-
-        if ($pagination > 1) {
-
-            for ($page = 2; $page <= $pagination; $page++) {
-
-                $data = $this->getPageHtml($page);
-
-                $dom->loadHTML($data, LIBXML_NOERROR);
-
-                foreach ($items as $item) {
-
-                    if (count($parsed) >= $this->count && $this->count != -1) :
-                        break;
-                    endif;
-
-                    $parsed[] = $this->parseData($dom, $item);
-                }
-            }
-        }
-
-        $this->sort($parsed);
-
-        return $parsed;
     }
 }
