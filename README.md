@@ -66,3 +66,8 @@ You can run the unit tests for TrustpilotReviewCollector Library using PHPUnit:
 
 TrustpilotReviewCollector Library is licensed under the MIT license. See the LICENSE file for more information. 
 
+ 
+------
+NO SEAS MALITO Y REGÁLAME UN CAFECITO 
+👉 [https://ko-fi.com/rolycoffe](https://ko-fi.com/rolycoffe)
+
