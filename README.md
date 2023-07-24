@@ -69,5 +69,5 @@ TrustpilotReviewCollector Library is licensed under the MIT license. See the LIC
  
 ------
 NO SEAS MALITO Y REGÁLAME UN CAFECITO 
-👉 [https://ko-fi.com/rolycoffe](https://ko-fi.com/rolycoffe)
+👉 [https://ko-fi.com/rrortega](https://ko-fi.com/rrortega)
 
